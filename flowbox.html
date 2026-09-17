@@ -583,13 +583,13 @@
         });
 
         document.getElementById('btn-share').addEventListener('click', () => {
-            navigator.clipboard.writeText("https://souldevofficial.github.io/flowbox").then(() => {
+            navigator.clipboard.writeText("https://souldevofficial.github.io/Flowbox/").then(() => {
                 toast.classList.add('show');
                 setTimeout(() => toast.classList.remove('show'), 2500);
             }).catch(() => {
                 const dummy = document.createElement('input');
                 document.body.appendChild(dummy);
-                dummy.value = "https://souldevofficial.github.io/flowbox";
+                dummy.value = "https://souldevofficial.github.io/Flowbox/";
                 dummy.select();
                 document.execCommand('copy');
                 document.body.removeChild(dummy);
