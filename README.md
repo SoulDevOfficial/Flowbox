@@ -9,4 +9,4 @@ Full music credit to Dark Cat for the background music! I have always loved thei
 Music from #Uppbeat (free for Creators!):
 https://uppbeat.io/t/dark-cat/a-day-in-my-life
 
-https://www.youtube.com/watch?v=ELgFgQI6sYA
+[![A Day In My Life by Dark Cat](https://img.youtube.com/vi/ELgFgQI6sYA/0.jpg)](https://www.youtube.com/watch?v=ELgFgQI6sYA "A Day In My Life by Dark Cat")
