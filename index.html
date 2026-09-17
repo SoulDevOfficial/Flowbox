@@ -502,8 +502,8 @@
             <div class="section-title">Visual Styling</div>
 
             <div class="slider-group">
-                <label>Trail Cleansing Alpha <span id="val-trails">0.18</span></label>
-                <input type="range" id="slider-trails" min="0.01" max="0.6" step="0.01" value="0.18">
+                <label>Trail Cleansing Alpha <span id="val-trails">0.3</span></label>
+                <input type="range" id="slider-trails" min="0.01" max="0.6" step="0.01" value="0.3">
             </div>
 
             <div class="slider-group">
@@ -573,7 +573,7 @@
         let particles = [];
         let numParticles = 1500;
         let particleSizeScale = 1.2;
-        let trailAlpha = 0.18;
+        let trailAlpha = 0.3;
         let mode = 'attract';
         let colorTheme = 0;
         let speedMultiplier = 1.0;
@@ -584,7 +584,6 @@
         let glowEnabled = false;
         let bounceEdges = false;
         let particleOpacity = 0.85;
-        let frameCounter = 0;
         let lastFpsUpdate = Date.now();
         let fpsCounter = 0;
 
@@ -768,7 +767,6 @@
         }
 
         function animate() {
-            frameCounter++;
             fpsCounter++;
 
             if (Date.now() - lastFpsUpdate >= 1000) {
@@ -777,13 +775,8 @@
                 lastFpsUpdate = Date.now();
             }
 
-            if (frameCounter % 60 === 0) {
-                ctx.fillStyle = '#030407';
-                ctx.fillRect(0, 0, width, height);
-            } else {
-                ctx.fillStyle = `rgba(3, 4, 7, ${trailAlpha})`;
-                ctx.fillRect(0, 0, width, height);
-            }
+            ctx.fillStyle = `rgba(3, 4, 7, ${trailAlpha})`;
+            ctx.fillRect(0, 0, width, height);
 
             if (glowEnabled) {
                 ctx.shadowBlur = 8;
@@ -889,7 +882,7 @@
             } else {
                 numParticles = 1500;
                 colorTheme = 0;
-                trailAlpha = 0.18;
+                trailAlpha = 0.3;
                 speedMultiplier = 1.0;
                 connectDist = 0;
             }
