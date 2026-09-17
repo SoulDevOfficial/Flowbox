@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowbox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #030407;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #fff;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: crosshair;
+        }
+
+        #music-container {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 110;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: auto;
+        }
+
+        .flowbox-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #ff7675, #74b9ff, #a29bfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding-left: 2px;
+            text-shadow: 0 0 20px rgba(116, 185, 255, 0.3);
+        }
+
+        #music-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(14, 17, 26, 0.88);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            padding: 6px 14px 6px 7px;
+            border-radius: 16px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+            max-width: 260px;
+            text-decoration: none;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+        }
+        #music-card:hover {
+            transform: translateY(-2px) scale(1.02);
+            border-color: rgba(116, 185, 255, 0.4);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 15px rgba(116, 185, 255, 0.2);
+        }
+
+        .avatar-container {
+            position: relative;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            flex-shrink: 0;
+            background: #121520;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+        }
+        .avatar-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .track-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .badge-tag {
+            font-size: 0.52rem;
+            font-weight: 700;
+            color: #74b9ff;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 1px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .badge-tag::after {
+            content: "↗";
+            font-size: 0.6rem;
+        }
+        .track-title {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .track-artist {
+            font-size: 0.65rem;
+            color: #9aa8ba;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #audio-unblock-prompt {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(116, 185, 255, 0.15);
+            border: 1px solid rgba(116, 185, 255, 0.4);
+            backdrop-filter: blur(12px);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: #74b9ff;
+            font-weight: 600;
+            pointer-events: none;
+            z-index: 100;
+            transition: opacity 0.5s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        #menu-toggle-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 120;
+            background: rgba(18, 22, 32, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 14px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #menu-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        #menu-toggle-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: #ffffff;
+        }
+
+        #popout-menu-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(4px);
+            z-index: 150;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #popout-menu-backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #popout-menu {
+            position: absolute;
+            top: 65px;
+            right: 16px;
+            width: 360px;
+            max-height: calc(100vh - 85px);
+            background: rgba(10, 13, 20, 0.94);
+            backdrop-filter: blur(30px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+            padding: 18px;
+            overflow-y: auto;
+            transform: scale(0.92) translateY(-10px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #popout-menu-backdrop.open #popout-menu {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #popout-menu::-webkit-scrollbar {
+            width: 5px;
+        }
+        #popout-menu::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .menu-header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #ff7675, #74b9ff, #a29bfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+        .close-btn:hover { color: #fff; }
+
+        .section-title {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #74b9ff;
+            margin: 14px 0 6px 0;
+            font-weight: 700;
+        }
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        .controls-grid.three-col {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        button.ctrl-btn, a.ctrl-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #d0d0e0;
+            padding: 7px 8px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+        button.ctrl-btn:hover, a.ctrl-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+        button.ctrl-btn.active {
+            background: rgba(116, 185, 255, 0.25);
+            border-color: #74b9ff;
+            color: #74b9ff;
+        }
+
+        .slider-group {
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .slider-group label {
+            font-size: 0.68rem;
+            color: #8888a0;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            line-height: 1.2;
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            height: 4px;
+            border-radius: 2px;
+            outline: none;
+            margin: 0 6px;
+            width: calc(100% - 12px);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #74b9ff;
+            cursor: pointer;
+        }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            font-size: 0.72rem;
+            color: #a0a0b0;
+        }
+
+        #stats {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-family: monospace;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 6px 12px;
+            border-radius: 20px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        #toast-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(116, 185, 255, 0.9);
+            color: #030407;
+            font-weight: 700;
+            font-size: 0.75rem;
+            padding: 8px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            z-index: 200;
+        }
+        #toast-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <audio id="theme-song" src="chiptune.mp3" autoplay loop></audio>
+
+    <div id="music-container">
+        <div class="flowbox-title">Flowbox</div>
+        <a id="music-card" href="https://www.youtube.com/watch?v=ELgFgQI6sYA" target="_blank" rel="noopener noreferrer" title="Listen on YouTube">
+            <div class="avatar-container">
+                <img id="avatar-img" src="dark-cat-credit.png" alt="Dark Cat" onerror="handleImageError(this)">
+            </div>
+            <div class="track-info">
+                <div class="badge-tag">OFFICIAL AUDIO</div>
+                <div class="track-title">a day in my life</div>
+                <div class="track-artist">dark cat</div>
+            </div>
+        </a>
+    </div>
+
+    <div id="audio-unblock-prompt">Audio autoplay was blocked by your browser. Click anywhere to listen!</div>
+
+    <button id="menu-toggle-btn">
+        <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        <span>Customizer</span>
+    </button>
+
+    <div id="popout-menu-backdrop">
+        <div id="popout-menu">
+            <div class="menu-header">
+                <h1>Flowbox Settings</h1>
+                <button class="close-btn" id="close-menu-btn">&times;</button>
+            </div>
+
+            <div class="section-title">Community & Sharing</div>
+            <div class="controls-grid">
+                <a href="https://github.com/SoulDevOfficial/Flowbox" target="_blank" rel="noopener noreferrer" class="ctrl-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    GitHub
+                </a>
+                <button id="btn-share" class="ctrl-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    Share
+                </button>
+            </div>
+
+            <div class="section-title">Presets</div>
+            <div class="controls-grid">
+                <button class="ctrl-btn" onclick="applyPreset('default')">Balanced</button>
+                <button class="ctrl-btn" onclick="applyPreset('matrix')">Matrix Flow</button>
+                <button class="ctrl-btn" onclick="applyPreset('hyperdrive')">Hyperdrive</button>
+                <button class="ctrl-btn" onclick="applyPreset('crystal')">Crystal Grid</button>
+            </div>
+
+            <div class="section-title">Interaction Modes</div>
+            <div class="controls-grid three-col" id="mode-grid">
+                <button class="ctrl-btn mode-btn active" data-mode="attract">Attract</button>
+                <button class="ctrl-btn mode-btn" data-mode="repel">Repel</button>
+                <button class="ctrl-btn mode-btn" data-mode="vortex">Vortex</button>
+                <button class="ctrl-btn mode-btn" data-mode="orbit">Orbit</button>
+                <button class="ctrl-btn mode-btn" data-mode="freeze">Freeze</button>
+                <button class="ctrl-btn mode-btn" data-mode="grid">Grid Lock</button>
+                <button class="ctrl-btn mode-btn" data-mode="blackhole">Black Hole</button>
+                <button class="ctrl-btn mode-btn" data-mode="flare">Solar Flare</button>
+                <button class="ctrl-btn mode-btn" data-mode="wave">Sine Wave</button>
+                <button class="ctrl-btn mode-btn" data-mode="brownian">Brownian</button>
+                <button class="ctrl-btn mode-btn" data-mode="magnet">Magnet</button>
+                <button class="ctrl-btn mode-btn" data-mode="paintbrush">Paint Brush</button>
+            </div>
+
+            <div class="section-title">Particle Density & Physics</div>
+
+            <div class="slider-group">
+                <label>Particle Count <span id="val-count">1500</span></label>
+                <input type="range" id="slider-count" min="100" max="15000" step="100" value="1500">
+            </div>
+
+            <div class="slider-group">
+                <label>Particle Size Scale <span id="val-size">1.2</span></label>
+                <input type="range" id="slider-size" min="0.2" max="6.0" step="0.1" value="1.2">
+            </div>
+
+            <div class="slider-group">
+                <label>Force Radius <span id="val-radius">220px</span></label>
+                <input type="range" id="slider-radius" min="40" max="600" step="10" value="220">
+            </div>
+
+            <div class="slider-group">
+                <label>Speed Multiplier <span id="val-speed">1.0</span></label>
+                <input type="range" id="slider-speed" min="0.1" max="5.0" step="0.1" value="1.0">
+            </div>
+
+            <div class="slider-group">
+                <label>Velocity Cap <span id="val-maxspeed">12</span></label>
+                <input type="range" id="slider-maxspeed" min="2" max="50" step="1" value="12">
+            </div>
+
+            <div class="slider-group">
+                <label>Dampening / Friction <span id="val-friction">0.96</span></label>
+                <input type="range" id="slider-friction" min="0.80" max="0.999" step="0.005" value="0.96">
+            </div>
+
+            <div class="slider-group">
+                <label>Global Gravity <span id="val-gravity">0.00</span></label>
+                <input type="range" id="slider-gravity" min="-0.5" max="0.5" step="0.02" value="0">
+            </div>
+
+            <div class="section-title">Visual Styling</div>
+
+            <div class="slider-group">
+                <label>Trail Cleansing Alpha <span id="val-trails">0.18</span></label>
+                <input type="range" id="slider-trails" min="0.01" max="0.6" step="0.01" value="0.18">
+            </div>
+
+            <div class="slider-group">
+                <label>Particle Opacity <span id="val-alpha">0.85</span></label>
+                <input type="range" id="slider-alpha" min="0.1" max="1.0" step="0.05" value="0.85">
+            </div>
+
+            <div class="slider-group">
+                <label>Connect Line Distance <span id="val-lines">0px</span></label>
+                <input type="range" id="slider-lines" min="0" max="120" step="5" value="0">
+            </div>
+
+            <div class="toggle-row">
+                <span>Neon Glow Filter</span>
+                <button id="btn-glow" class="ctrl-btn" style="padding: 4px 10px;">OFF</button>
+            </div>
+
+            <div class="toggle-row">
+                <span>Bounce Screen Edge</span>
+                <button id="btn-bounce" class="ctrl-btn" style="padding: 4px 10px;">OFF</button>
+            </div>
+
+            <div style="margin-top: 14px; display: flex; gap: 6px;">
+                <button id="btn-color" class="ctrl-btn" style="flex: 1;">Cycle Colors</button>
+            </div>
+
+            <button id="btn-clear" class="ctrl-btn" style="width: 100%; margin-top: 10px; background: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.3); color: #f43f5e;">🗑️ Clear & Reset Canvas</button>
+        </div>
+    </div>
+
+    <div id="stats">PARTICLES: <span id="p-count">0</span> | FPS: <span id="fps-val">60</span> | MODE: <span id="p-mode">Attract</span></div>
+    <div id="toast-notification">Copied to clipboard! Thank for sharing <3</div>
+
+    <script>
+        function handleImageError(img) {
+            img.onerror = null;
+            img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2374b9ff'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z'/></svg>";
+        }
+
+        const audio = document.getElementById('theme-song');
+        const audioPrompt = document.getElementById('audio-unblock-prompt');
+
+        function tryPlayAudio() {
+            audio.play().then(() => {
+                if (audioPrompt) audioPrompt.style.opacity = '0';
+                setTimeout(() => { if (audioPrompt) audioPrompt.remove(); }, 500);
+            }).catch(() => {
+                if (audioPrompt) audioPrompt.style.opacity = '1';
+            });
+        }
+
+        tryPlayAudio();
+        ['click', 'touchstart', 'keydown', 'mousedown'].forEach(evt => {
+            window.addEventListener(evt, tryPlayAudio, { once: true });
+        });
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const popoutBackdrop = document.getElementById('popout-menu-backdrop');
+        const menuToggleBtn = document.getElementById('menu-toggle-btn');
+        const closeMenuBtn = document.getElementById('close-menu-btn');
+        const popoutMenu = document.getElementById('popout-menu');
+        const musicContainer = document.getElementById('music-container');
+        const toast = document.getElementById('toast-notification');
+
+        let width, height;
+        let particles = [];
+        let numParticles = 1500;
+        let particleSizeScale = 1.2;
+        let trailAlpha = 0.18;
+        let mode = 'attract';
+        let colorTheme = 0;
+        let speedMultiplier = 1.0;
+        let maxSpeed = 12;
+        let globalGravity = 0;
+        let dampening = 0.96;
+        let connectDist = 0;
+        let glowEnabled = false;
+        let bounceEdges = false;
+        let particleOpacity = 0.85;
+        let frameCounter = 0;
+        let lastFpsUpdate = Date.now();
+        let fpsCounter = 0;
+
+        menuToggleBtn.addEventListener('click', () => popoutBackdrop.classList.add('open'));
+        closeMenuBtn.addEventListener('click', () => popoutBackdrop.classList.remove('open'));
+        popoutBackdrop.addEventListener('click', (e) => {
+            if (e.target === popoutBackdrop) popoutBackdrop.classList.remove('open');
+        });
+
+        document.getElementById('btn-share').addEventListener('click', () => {
+            navigator.clipboard.writeText("https://souldevofficial.github.io/flowbox").then(() => {
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2500);
+            }).catch(() => {
+                const dummy = document.createElement('input');
+                document.body.appendChild(dummy);
+                dummy.value = "https://souldevofficial.github.io/flowbox";
+                dummy.select();
+                document.execCommand('copy');
+                document.body.removeChild(dummy);
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2500);
+            });
+        });
+
+        [popoutMenu, musicContainer, menuToggleBtn].forEach(el => {
+            ['mousedown', 'mouseup', 'mousemove', 'click', 'dblclick'].forEach(evt => {
+                el.addEventListener(evt, (e) => e.stopPropagation());
+            });
+        });
+
+        const mouse = { x: -1000, y: -1000, isDown: false, radius: 220 };
+
+        const themes = [
+            { name: "Neon Cyber", fn: (hue, speed) => `hsla(${hue + speed * 10}, 85%, 60%, ${particleOpacity})` },
+            { name: "Cosmic Purple", fn: (hue, speed) => `hsla(${260 + speed * 15}, 90%, ${50 + speed * 6}%, ${particleOpacity})` },
+            { name: "Firestorm", fn: (hue, speed) => `hsla(${10 + speed * 18}, 100%, 55%, ${particleOpacity})` },
+            { name: "Ocean Bio", fn: (hue, speed) => `hsla(${170 + speed * 22}, 80%, 50%, ${particleOpacity})` },
+            { name: "Monochrome Grid", fn: (hue, speed) => `hsla(0, 0%, ${70 + speed * 5}%, ${particleOpacity})` }
+        ];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.baseRadius = (Math.random() * 1.5 + 0.5);
+                this.hue = Math.random() * 360;
+            }
+
+            update() {
+                this.vy += globalGravity;
+
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < mouse.radius && mouse.x > 0) {
+                    const force = (1 - dist / mouse.radius);
+                    const angle = Math.atan2(dy, dx);
+
+                    switch (mode) {
+                        case 'attract':
+                            const att = mouse.isDown ? force * 2.2 : force * 0.6;
+                            this.vx += Math.cos(angle) * att;
+                            this.vy += Math.sin(angle) * att;
+                            break;
+                        case 'repel':
+                            const rep = mouse.isDown ? force * 3.5 : force * 1.2;
+                            this.vx -= Math.cos(angle) * rep;
+                            this.vy -= Math.sin(angle) * rep;
+                            break;
+                        case 'vortex':
+                            const perpAngle = angle + Math.PI / 2;
+                            const vForce = mouse.isDown ? force * 2.2 : force * 0.9;
+                            this.vx += Math.cos(perpAngle) * vForce + Math.cos(angle) * force * 0.2;
+                            this.vy += Math.sin(perpAngle) * vForce + Math.sin(angle) * force * 0.2;
+                            break;
+                        case 'orbit':
+                            const orbitAngle = angle + Math.PI / 2;
+                            this.vx = Math.cos(orbitAngle) * 7 + Math.cos(angle) * force * 0.5;
+                            this.vy = Math.sin(orbitAngle) * 7 + Math.sin(angle) * force * 0.5;
+                            break;
+                        case 'freeze':
+                            this.vx *= 0.4;
+                            this.vy *= 0.4;
+                            break;
+                        case 'grid':
+                            if (mouse.isDown) {
+                                const gx = Math.round(this.x / 45) * 45;
+                                const gy = Math.round(this.y / 45) * 45;
+                                this.vx += (gx - this.x) * 0.12;
+                                this.vy += (gy - this.y) * 0.12;
+                            }
+                            break;
+                        case 'blackhole':
+                            this.vx += Math.cos(angle) * force * 2.5;
+                            this.vy += Math.sin(angle) * force * 2.5;
+                            if (dist < 15) { this.reset(); }
+                            break;
+                        case 'flare':
+                            this.vx -= Math.cos(angle) * force * 4.0;
+                            this.vy -= Math.sin(angle) * force * 4.0;
+                            break;
+                        case 'wave':
+                            this.vy += Math.sin(this.x * 0.02 + Date.now() * 0.003) * 0.5;
+                            break;
+                        case 'brownian':
+                            this.vx += (Math.random() - 0.5) * 1.2;
+                            this.vy += (Math.random() - 0.5) * 1.2;
+                            break;
+                        case 'magnet':
+                            this.vx += (dx / dist) * force * 1.5;
+                            this.vy += (dy / dist) * force * 1.5;
+                            break;
+                        case 'paintbrush':
+                            if (mouse.isDown) {
+                                this.x = mouse.x + (Math.random() - 0.5) * 30;
+                                this.y = mouse.y + (Math.random() - 0.5) * 30;
+                                this.vx = (Math.random() - 0.5) * 2;
+                                this.vy = (Math.random() - 0.5) * 2;
+                            }
+                            break;
+                    }
+                }
+
+                this.vx *= dampening;
+                this.vy *= dampening;
+
+                const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                if (currentSpeed > maxSpeed) {
+                    this.vx = (this.vx / currentSpeed) * maxSpeed;
+                    this.vy = (this.vy / currentSpeed) * maxSpeed;
+                }
+
+                this.x += this.vx * speedMultiplier;
+                this.y += this.vy * speedMultiplier;
+
+                if (bounceEdges) {
+                    if (this.x < 0 || this.x > width) this.vx *= -0.9;
+                    if (this.y < 0 || this.y > height) this.vy *= -0.9;
+                } else {
+                    if (this.x < 0) this.x = width;
+                    if (this.x > width) this.x = 0;
+                    if (this.y < 0) this.y = height;
+                    if (this.y > height) this.y = 0;
+                }
+
+                this.hue += 0.4;
+            }
+
+            draw() {
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                const r = (this.baseRadius * particleSizeScale) + Math.min(speed * 0.2, 2.5);
+
+                ctx.fillStyle = themes[colorTheme].fn(this.hue, speed);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < numParticles; i++) {
+                particles.push(new Particle());
+            }
+            document.getElementById('p-count').innerText = numParticles;
+        }
+
+        function animate() {
+            frameCounter++;
+            fpsCounter++;
+
+            if (Date.now() - lastFpsUpdate >= 1000) {
+                document.getElementById('fps-val').innerText = fpsCounter;
+                fpsCounter = 0;
+                lastFpsUpdate = Date.now();
+            }
+
+            if (frameCounter % 60 === 0) {
+                ctx.fillStyle = '#030407';
+                ctx.fillRect(0, 0, width, height);
+            } else {
+                ctx.fillStyle = `rgba(3, 4, 7, ${trailAlpha})`;
+                ctx.fillRect(0, 0, width, height);
+            }
+
+            if (glowEnabled) {
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#74b9ff';
+            }
+
+            if (connectDist > 0) {
+                const step = numParticles > 3000 ? 4 : 1;
+                for (let i = 0; i < particles.length; i += step) {
+                    for (let j = i + 1; j < particles.length; j += step * 3) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < connectDist) {
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.strokeStyle = `rgba(116, 185, 255, ${(1 - dist / connectDist) * 0.4})`;
+                            ctx.lineWidth = 0.5;
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+
+            ctx.shadowBlur = 0;
+            requestAnimationFrame(animate);
+        }
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                mode = btn.getAttribute('data-mode');
+                document.getElementById('p-mode').innerText = btn.innerText;
+            });
+        });
+
+        function setupSlider(sliderId, displayId, callback, unit = '') {
+            const slider = document.getElementById(sliderId);
+            const display = document.getElementById(displayId);
+            slider.addEventListener('input', (e) => {
+                const val = e.target.value;
+                display.innerText = val + unit;
+                callback(parseFloat(val));
+            });
+        }
+
+        setupSlider('slider-count', 'val-count', (val) => { numParticles = val; initParticles(); });
+        setupSlider('slider-size', 'val-size', (val) => particleSizeScale = val);
+        setupSlider('slider-radius', 'val-radius', (val) => mouse.radius = val, 'px');
+        setupSlider('slider-speed', 'val-speed', (val) => speedMultiplier = val);
+        setupSlider('slider-maxspeed', 'val-maxspeed', (val) => maxSpeed = val);
+        setupSlider('slider-friction', 'val-friction', (val) => dampening = val);
+        setupSlider('slider-gravity', 'val-gravity', (val) => globalGravity = val);
+        setupSlider('slider-trails', 'val-trails', (val) => trailAlpha = val);
+        setupSlider('slider-alpha', 'val-alpha', (val) => particleOpacity = val);
+        setupSlider('slider-lines', 'val-lines', (val) => connectDist = val, 'px');
+
+        document.getElementById('btn-glow').addEventListener('click', (e) => {
+            glowEnabled = !glowEnabled;
+            e.target.innerText = glowEnabled ? 'ON' : 'OFF';
+            e.target.classList.toggle('active', glowEnabled);
+        });
+
+        document.getElementById('btn-bounce').addEventListener('click', (e) => {
+            bounceEdges = !bounceEdges;
+            e.target.innerText = bounceEdges ? 'ON' : 'OFF';
+            e.target.classList.toggle('active', bounceEdges);
+        });
+
+        document.getElementById('btn-color').addEventListener('click', () => {
+            colorTheme = (colorTheme + 1) % themes.length;
+        });
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            ctx.fillStyle = '#030407';
+            ctx.fillRect(0, 0, width, height);
+            initParticles();
+        });
+
+        function applyPreset(preset) {
+            if (preset === 'matrix') {
+                numParticles = 2500;
+                colorTheme = 3;
+                trailAlpha = 0.12;
+                speedMultiplier = 1.2;
+            } else if (preset === 'hyperdrive') {
+                numParticles = 4000;
+                colorTheme = 0;
+                trailAlpha = 0.05;
+                speedMultiplier = 2.5;
+            } else if (preset === 'crystal') {
+                numParticles = 1200;
+                colorTheme = 4;
+                connectDist = 45;
+            } else {
+                numParticles = 1500;
+                colorTheme = 0;
+                trailAlpha = 0.18;
+                speedMultiplier = 1.0;
+                connectDist = 0;
+            }
+            document.getElementById('slider-count').value = numParticles;
+            document.getElementById('val-count').innerText = numParticles;
+            initParticles();
+        }
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+        window.addEventListener('mousedown', () => mouse.isDown = true);
+        window.addEventListener('mouseup', () => mouse.isDown = false);
+
+        resize();
+        initParticles();
+        animate();
+    </script>
+</body>
+</html>
