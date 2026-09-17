@@ -39,6 +39,7 @@
             width: 100vw;
             height: 100vh;
             cursor: crosshair;
+            touch-action: none;
         }
 
         #music-container {
@@ -390,6 +391,70 @@
             opacity: 1;
             transform: translateY(0);
         }
+
+        @media (max-width: 600px) {
+            #music-container {
+                top: 10px;
+                left: 10px;
+                max-width: calc(100vw - 78px);
+            }
+            #music-card {
+                max-width: min(240px, calc(100vw - 78px));
+                padding-right: 10px;
+            }
+            .track-title {
+                font-size: 0.7rem;
+            }
+            .track-artist {
+                font-size: 0.58rem;
+            }
+            #menu-toggle-btn {
+                top: 10px;
+                right: 10px;
+                padding: 9px 11px;
+            }
+            #menu-toggle-btn span {
+                display: none;
+            }
+            #popout-menu {
+                top: 58px;
+                right: 8px;
+                left: 8px;
+                width: auto;
+                max-height: calc(100vh - 70px);
+                padding: 14px;
+                border-radius: 16px;
+            }
+            .controls-grid.three-col {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            button.ctrl-btn, a.ctrl-btn {
+                min-height: 36px;
+                padding: 8px 6px;
+                font-size: 0.68rem;
+            }
+            input[type=range] {
+                height: 7px;
+            }
+            input[type=range]::-webkit-slider-thumb {
+                width: 18px;
+                height: 18px;
+            }
+            #stats {
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                text-align: center;
+                font-size: 0.58rem;
+                padding: 6px 8px;
+            }
+            #audio-unblock-prompt {
+                bottom: 52px;
+                width: calc(100vw - 32px);
+                text-align: center;
+                font-size: 0.68rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -444,6 +509,16 @@
                 <button class="ctrl-btn" onclick="applyPreset('matrix')">Matrix Flow</button>
                 <button class="ctrl-btn" onclick="applyPreset('hyperdrive')">Hyperdrive</button>
                 <button class="ctrl-btn" onclick="applyPreset('crystal')">Crystal Grid</button>
+                <button class="ctrl-btn" onclick="applyPreset('calm')">Calm Flow</button>
+                <button class="ctrl-btn" onclick="applyPreset('custom')">Custom (beta)</button>
+            </div>
+
+            <div id="custom-path-controls" style="display: none; margin-top: 8px;">
+                <div style="font-size: 0.68rem; color: #8888a0; line-height: 1.4; margin-bottom: 6px;">Draw a path on the canvas. The particles will follow it together.</div>
+                <div class="controls-grid">
+                    <button id="btn-draw-path" class="ctrl-btn active">Draw Path</button>
+                    <button id="btn-clear-path" class="ctrl-btn">Clear Path</button>
+                </div>
             </div>
 
             <div class="section-title">Interaction Modes</div>
@@ -460,6 +535,7 @@
                 <button class="ctrl-btn mode-btn" data-mode="brownian">Brownian</button>
                 <button class="ctrl-btn mode-btn" data-mode="magnet">Magnet</button>
                 <button class="ctrl-btn mode-btn" data-mode="paintbrush">Paint Brush</button>
+                <button class="ctrl-btn mode-btn" data-mode="breathe">Breathe</button>
             </div>
 
             <div class="section-title">Particle Density & Physics</div>
@@ -477,6 +553,11 @@
             <div class="slider-group">
                 <label>Force Radius <span id="val-radius">220px</span></label>
                 <input type="range" id="slider-radius" min="40" max="600" step="10" value="220">
+            </div>
+
+            <div class="slider-group">
+                <label>Cursor Reach <span id="val-cursor-reach">1.0x</span></label>
+                <input type="range" id="slider-cursor-reach" min="0.25" max="3.0" step="0.05" value="1.0">
             </div>
 
             <div class="slider-group">
@@ -516,9 +597,21 @@
                 <input type="range" id="slider-lines" min="0" max="120" step="5" value="0">
             </div>
 
+            <div class="section-title">Atmosphere</div>
+
+            <div class="slider-group">
+                <label>Ambient Light Strength (Needs "Atmosphere: On") <span id="val-ambient">0.12</span></label>
+                <input type="range" id="slider-ambient" min="0" max="0.35" step="0.01" value="0.12">
+            </div>
+
             <div class="toggle-row">
                 <span>Neon Glow Filter</span>
                 <button id="btn-glow" class="ctrl-btn" style="padding: 4px 10px;">OFF</button>
+            </div>
+
+            <div class="toggle-row">
+                <span>Atmosphere</span>
+                <button id="btn-ambient" class="ctrl-btn" style="padding: 4px 10px;">OFF</button>
             </div>
 
             <div class="toggle-row">
@@ -530,7 +623,7 @@
                 <button id="btn-color" class="ctrl-btn" style="flex: 1;">Cycle Colors</button>
             </div>
 
-            <button id="btn-clear" class="ctrl-btn" style="width: 100%; margin-top: 10px; background: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.3); color: #f43f5e;">🗑️ Clear & Reset Canvas</button>
+            <button id="btn-clear" class="ctrl-btn" style="width: 100%; margin-top: 10px; background: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.3); color: #f43f5e;">🗑️ Reset Everything</button>
         </div>
     </div>
 
@@ -582,10 +675,18 @@
         let dampening = 0.96;
         let connectDist = 0;
         let glowEnabled = false;
+        let ambientEnabled = false;
+        let ambientStrength = 0.12;
         let bounceEdges = false;
         let particleOpacity = 0.85;
         let lastFpsUpdate = Date.now();
         let fpsCounter = 0;
+        let elapsedTime = 0;
+        let customPath = [];
+        let customDrawing = false;
+        let customPointerDown = false;
+        let customPathEnabled = false;
+        let customPathProgress = 0;
 
         menuToggleBtn.addEventListener('click', () => popoutBackdrop.classList.add('open'));
         closeMenuBtn.addEventListener('click', () => popoutBackdrop.classList.remove('open'));
@@ -615,14 +716,19 @@
             });
         });
 
-        const mouse = { x: -1000, y: -1000, isDown: false, radius: 220 };
+        const mouse = { x: -1000, y: -1000, isDown: false, radius: 220, reachScale: 1 };
+
+        function updateCursorRadius() {
+            mouse.radius = Number(document.getElementById('slider-radius').value) * mouse.reachScale;
+        }
 
         const themes = [
             { name: "Neon Cyber", fn: (hue, speed) => `hsla(${hue + speed * 10}, 85%, 60%, ${particleOpacity})` },
             { name: "Cosmic Purple", fn: (hue, speed) => `hsla(${260 + speed * 15}, 90%, ${50 + speed * 6}%, ${particleOpacity})` },
             { name: "Firestorm", fn: (hue, speed) => `hsla(${10 + speed * 18}, 100%, 55%, ${particleOpacity})` },
             { name: "Ocean Bio", fn: (hue, speed) => `hsla(${170 + speed * 22}, 80%, 50%, ${particleOpacity})` },
-            { name: "Monochrome Grid", fn: (hue, speed) => `hsla(0, 0%, ${70 + speed * 5}%, ${particleOpacity})` }
+            { name: "Monochrome Grid", fn: (hue, speed) => `hsla(0, 0%, ${70 + speed * 5}%, ${particleOpacity})` },
+            { name: "Soft Meadow", fn: (hue, speed) => `hsla(${145 + speed * 8}, 55%, ${62 + speed * 3}%, ${particleOpacity})` }
         ];
 
         function resize() {
@@ -642,10 +748,31 @@
                 this.vy = (Math.random() - 0.5) * 2;
                 this.baseRadius = (Math.random() * 1.5 + 0.5);
                 this.hue = Math.random() * 360;
+                this.pathOffset = Math.floor(Math.random() * 10000);
             }
 
             update() {
                 this.vy += globalGravity;
+
+                if (mode === 'custom' && customPath.length > 1) {
+                    const pathIndex = Math.floor((customPathProgress + this.pathOffset) % customPath.length);
+                    const target = customPath[pathIndex];
+                    this.vx += (target.x - this.x) * 0.0025;
+                    this.vy += (target.y - this.y) * 0.0025;
+                }
+
+                if (mode === 'breathe') {
+                    const centerX = width * 0.5;
+                    const centerY = height * 0.5;
+                    const centerDx = centerX - this.x;
+                    const centerDy = centerY - this.y;
+                    const centerDistance = Math.sqrt(centerDx * centerDx + centerDy * centerDy) || 1;
+                    const breath = Math.sin(elapsedTime * 0.35) * 0.018;
+                    this.vx += (centerDx / centerDistance) * breath;
+                    this.vy += (centerDy / centerDistance) * breath;
+                    this.vx += Math.cos(elapsedTime * 0.22 + this.y * 0.002) * 0.012;
+                    this.vy += Math.sin(elapsedTime * 0.22 + this.x * 0.002) * 0.012;
+                }
 
                 const dx = mouse.x - this.x;
                 const dy = mouse.y - this.y;
@@ -660,6 +787,12 @@
                             const att = mouse.isDown ? force * 2.2 : force * 0.6;
                             this.vx += Math.cos(angle) * att;
                             this.vy += Math.sin(angle) * att;
+                            break;
+                        case 'breathe':
+                        case 'custom':
+                            const gentleAttract = mouse.isDown ? force * 1.8 : force * 0.45;
+                            this.vx += Math.cos(angle) * gentleAttract;
+                            this.vy += Math.sin(angle) * gentleAttract;
                             break;
                         case 'repel':
                             const rep = mouse.isDown ? force * 3.5 : force * 1.2;
@@ -768,6 +901,10 @@
 
         function animate() {
             fpsCounter++;
+            elapsedTime = performance.now() * 0.001;
+            if (mode === 'custom' && customPath.length > 1) {
+                customPathProgress = (customPathProgress + 0.35 * speedMultiplier) % customPath.length;
+            }
 
             if (Date.now() - lastFpsUpdate >= 1000) {
                 document.getElementById('fps-val').innerText = fpsCounter;
@@ -777,6 +914,34 @@
 
             ctx.fillStyle = `rgba(3, 4, 7, ${trailAlpha})`;
             ctx.fillRect(0, 0, width, height);
+
+            if (ambientEnabled && ambientStrength > 0) {
+                const pulse = 0.72 + Math.sin(elapsedTime * 0.18) * 0.16;
+                const ambient = ctx.createRadialGradient(
+                    width * 0.5, height * 0.48, 0,
+                    width * 0.5, height * 0.48, Math.max(width, height) * 0.72
+                );
+                ambient.addColorStop(0, `rgba(102, 210, 190, ${ambientStrength * pulse})`);
+                ambient.addColorStop(0.55, `rgba(72, 145, 190, ${ambientStrength * 0.35})`);
+                ambient.addColorStop(1, 'rgba(3, 4, 7, 0)');
+                ctx.fillStyle = ambient;
+                ctx.fillRect(0, 0, width, height);
+            }
+
+            if (customPathEnabled && customPath.length > 1) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(customPath[0].x, customPath[0].y);
+                for (let i = 1; i < customPath.length; i++) {
+                    ctx.lineTo(customPath[i].x, customPath[i].y);
+                }
+                ctx.strokeStyle = 'rgba(116, 185, 255, 0.55)';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#74b9ff';
+                ctx.stroke();
+                ctx.restore();
+            }
 
             if (glowEnabled) {
                 ctx.shadowBlur = 8;
@@ -817,6 +982,8 @@
                 document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 mode = btn.getAttribute('data-mode');
+                customPathEnabled = false;
+                document.getElementById('custom-path-controls').style.display = 'none';
                 document.getElementById('p-mode').innerText = btn.innerText;
             });
         });
@@ -833,7 +1000,15 @@
 
         setupSlider('slider-count', 'val-count', (val) => { numParticles = val; initParticles(); });
         setupSlider('slider-size', 'val-size', (val) => particleSizeScale = val);
-        setupSlider('slider-radius', 'val-radius', (val) => mouse.radius = val, 'px');
+        setupSlider('slider-radius', 'val-radius', (val) => {
+            document.getElementById('val-radius').innerText = `${Math.round(val * mouse.reachScale)}px`;
+            updateCursorRadius();
+        }, 'px');
+        setupSlider('slider-cursor-reach', 'val-cursor-reach', (val) => {
+            mouse.reachScale = val;
+            document.getElementById('val-radius').innerText = `${Math.round(Number(document.getElementById('slider-radius').value) * val)}px`;
+            updateCursorRadius();
+        }, 'x');
         setupSlider('slider-speed', 'val-speed', (val) => speedMultiplier = val);
         setupSlider('slider-maxspeed', 'val-maxspeed', (val) => maxSpeed = val);
         setupSlider('slider-friction', 'val-friction', (val) => dampening = val);
@@ -841,11 +1016,18 @@
         setupSlider('slider-trails', 'val-trails', (val) => trailAlpha = val);
         setupSlider('slider-alpha', 'val-alpha', (val) => particleOpacity = val);
         setupSlider('slider-lines', 'val-lines', (val) => connectDist = val, 'px');
+        setupSlider('slider-ambient', 'val-ambient', (val) => ambientStrength = val);
 
         document.getElementById('btn-glow').addEventListener('click', (e) => {
             glowEnabled = !glowEnabled;
             e.target.innerText = glowEnabled ? 'ON' : 'OFF';
             e.target.classList.toggle('active', glowEnabled);
+        });
+
+        document.getElementById('btn-ambient').addEventListener('click', (e) => {
+            ambientEnabled = !ambientEnabled;
+            e.target.innerText = ambientEnabled ? 'ON' : 'OFF';
+            e.target.classList.toggle('active', ambientEnabled);
         });
 
         document.getElementById('btn-bounce').addEventListener('click', (e) => {
@@ -859,8 +1041,21 @@
         });
 
         document.getElementById('btn-clear').addEventListener('click', () => {
-            ctx.fillStyle = '#030407';
-            ctx.fillRect(0, 0, width, height);
+            window.location.reload();
+        });
+
+        document.getElementById('btn-draw-path').addEventListener('click', (e) => {
+            customDrawing = !customDrawing;
+            e.target.innerText = customDrawing ? 'Finish Path' : 'Draw Path';
+            e.target.classList.toggle('active', customDrawing);
+        });
+
+        document.getElementById('btn-clear-path').addEventListener('click', () => {
+            customPath = [];
+            customPathProgress = 0;
+            customDrawing = true;
+            document.getElementById('btn-draw-path').innerText = 'Finish Path';
+            document.getElementById('btn-draw-path').classList.add('active');
             initParticles();
         });
 
@@ -879,15 +1074,63 @@
                 numParticles = 1200;
                 colorTheme = 4;
                 connectDist = 45;
+            } else if (preset === 'calm') {
+                numParticles = 1100;
+                colorTheme = 5;
+                trailAlpha = 0.22;
+                particleOpacity = 0.72;
+                speedMultiplier = 0.65;
+                maxSpeed = 8;
+                dampening = 0.985;
+                connectDist = 0;
+                ambientEnabled = true;
+                ambientStrength = 0.18;
+                mode = 'breathe';
+                customPathEnabled = false;
+                customDrawing = false;
+            } else if (preset === 'custom') {
+                mode = 'custom';
+                customPath = [];
+                customPathProgress = 0;
+                customPathEnabled = true;
+                customDrawing = true;
             } else {
                 numParticles = 1500;
                 colorTheme = 0;
                 trailAlpha = 0.3;
                 speedMultiplier = 1.0;
                 connectDist = 0;
+                ambientEnabled = false;
+                ambientStrength = 0.12;
+                mode = 'attract';
+                customPathEnabled = false;
+                customDrawing = false;
             }
             document.getElementById('slider-count').value = numParticles;
             document.getElementById('val-count').innerText = numParticles;
+            document.getElementById('slider-trails').value = trailAlpha;
+            document.getElementById('val-trails').innerText = trailAlpha;
+            document.getElementById('slider-alpha').value = particleOpacity;
+            document.getElementById('val-alpha').innerText = particleOpacity;
+            document.getElementById('slider-speed').value = speedMultiplier;
+            document.getElementById('val-speed').innerText = speedMultiplier;
+            document.getElementById('slider-maxspeed').value = maxSpeed;
+            document.getElementById('val-maxspeed').innerText = maxSpeed;
+            document.getElementById('slider-friction').value = dampening;
+            document.getElementById('val-friction').innerText = dampening;
+            document.getElementById('slider-lines').value = connectDist;
+            document.getElementById('val-lines').innerText = connectDist + 'px';
+            document.getElementById('slider-ambient').value = ambientStrength;
+            document.getElementById('val-ambient').innerText = ambientStrength;
+            document.getElementById('btn-ambient').innerText = ambientEnabled ? 'ON' : 'OFF';
+            document.getElementById('btn-ambient').classList.toggle('active', ambientEnabled);
+            document.getElementById('custom-path-controls').style.display = customPathEnabled ? 'block' : 'none';
+            document.getElementById('btn-draw-path').innerText = customDrawing ? 'Finish Path' : 'Draw Path';
+            document.getElementById('btn-draw-path').classList.toggle('active', customDrawing);
+            document.querySelectorAll('.mode-btn').forEach(button => {
+                button.classList.toggle('active', button.getAttribute('data-mode') === mode);
+            });
+            document.getElementById('p-mode').innerText = mode === 'breathe' ? 'Breathe' : mode === 'custom' ? 'Custom' : 'Attract';
             initParticles();
         }
 
@@ -895,6 +1138,60 @@
         window.addEventListener('mousemove', (e) => {
             mouse.x = e.clientX;
             mouse.y = e.clientY;
+            if (customPathEnabled && customDrawing && customPointerDown) {
+                const previousPoint = customPath[customPath.length - 1];
+                if (!previousPoint || Math.hypot(e.clientX - previousPoint.x, e.clientY - previousPoint.y) > 6) {
+                    customPath.push({ x: e.clientX, y: e.clientY });
+                }
+            }
+        });
+        function updateTouchPosition(e) {
+            const touch = e.touches[0] || e.changedTouches[0];
+            if (!touch) return;
+            mouse.x = touch.clientX;
+            mouse.y = touch.clientY;
+            if (customPathEnabled && customDrawing && customPointerDown) {
+                const previousPoint = customPath[customPath.length - 1];
+                if (!previousPoint || Math.hypot(touch.clientX - previousPoint.x, touch.clientY - previousPoint.y) > 6) {
+                    customPath.push({ x: touch.clientX, y: touch.clientY });
+                }
+            }
+        }
+        canvas.addEventListener('mousedown', (e) => {
+            if (customPathEnabled && customDrawing) {
+                customPointerDown = true;
+                customPath.push({ x: e.clientX, y: e.clientY });
+            }
+        });
+        window.addEventListener('mouseup', () => {
+            customPointerDown = false;
+            if (customPathEnabled && customDrawing && customPath.length > 1) {
+                customDrawing = false;
+                document.getElementById('btn-draw-path').innerText = 'Draw Path';
+                document.getElementById('btn-draw-path').classList.remove('active');
+            }
+        });
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            customPointerDown = customPathEnabled && customDrawing;
+            mouse.isDown = true;
+            updateTouchPosition(e);
+            if (customPointerDown) {
+                customPath.push({ x: mouse.x, y: mouse.y });
+            }
+        }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            updateTouchPosition(e);
+        }, { passive: false });
+        window.addEventListener('touchend', () => {
+            customPointerDown = false;
+            mouse.isDown = false;
+            if (customPathEnabled && customDrawing && customPath.length > 1) {
+                customDrawing = false;
+                document.getElementById('btn-draw-path').innerText = 'Draw Path';
+                document.getElementById('btn-draw-path').classList.remove('active');
+            }
         });
         window.addEventListener('mousedown', () => mouse.isDown = true);
         window.addEventListener('mouseup', () => mouse.isDown = false);
