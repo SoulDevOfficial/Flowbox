@@ -3,7 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flowbox</title>
+    <title>Flowbox - Interactive Physics Sandbox</title>
+    <meta name="description" content="Take a break with Flowbox, a playful physics sandbox where you can shape particles, tweak gravity, and enjoy relaxing music.">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Flowbox - Interactive Physics Sandbox">
+    <meta property="og:description" content="Shape particles, experiment with gravity, and take a relaxing break in Flowbox, a playful physics sandbox for your browser.">
+    <meta property="og:image" content="https://repository-images.githubusercontent.com/1373881076/a016c149-89ec-4002-b016-27d4e232ac28">
+    <meta property="og:url" content="https://souldevofficial.github.io/Flowbox/">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Flowbox - Interactive Physics Sandbox">
+    <meta name="twitter:description" content="Shape particles, experiment with gravity, and take a relaxing break in Flowbox, a playful physics sandbox for your browser.">
+    <meta name="twitter:image" content="https://repository-images.githubusercontent.com/1373881076/a016c149-89ec-4002-b016-27d4e232ac28">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -695,8 +707,10 @@
                             this.vy += (Math.random() - 0.5) * 1.2;
                             break;
                         case 'magnet':
-                            this.vx += (dx / dist) * force * 1.5;
-                            this.vy += (dy / dist) * force * 1.5;
+                            if (dist > 0) {
+                                this.vx += (dx / dist) * force * 1.5;
+                                this.vy += (dy / dist) * force * 1.5;
+                            }
                             break;
                         case 'paintbrush':
                             if (mouse.isDown) {
